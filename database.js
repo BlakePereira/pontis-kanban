@@ -179,7 +179,9 @@ class Database {
     this.db.run(
       "UPDATE tasks SET title = ?, description = ?, priority = ?, assignee = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       [taskData.title, taskData.description, taskData.priority, taskData.assignee, taskData.status, taskId],
-      callback
+      function(err) {
+        callback(err, this);
+      }
     );
   }
 
@@ -187,12 +189,16 @@ class Database {
     this.db.run(
       "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       [status, taskId],
-      callback
+      function(err) {
+        callback(err, this);
+      }
     );
   }
 
   deleteTask(taskId, callback) {
-    this.db.run("DELETE FROM tasks WHERE id = ?", [taskId], callback);
+    this.db.run("DELETE FROM tasks WHERE id = ?", [taskId], function(err) {
+      callback(err, this);
+    });
   }
 
   close() {
