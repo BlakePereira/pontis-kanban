@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pontis • Project Management</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-content">
+                <div class="brand">
+                    <h1>🚀 Pontis</h1>
+                    <div class="subtitle">Project Management • Sprint 1</div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="toggleSprint()">
+                        📊 Sprint View
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="openReportsModal()">
+                        📈 Reports
+                    </button>
+                    <button class="btn btn-primary" onclick="openAddTaskModal()">
+                        ➕ Add Task
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- STATS DASHBOARD -->
+        <section class="stats">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalTasks">-</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="sprintProgress">-</div>
+                    <div class="stat-label">Sprint Progress</div>
+                </div>
+                <div class="stat-item success">
+                    <div class="stat-number" id="velocity">-</div>
+                    <div class="stat-label">Team Velocity</div>
+                </div>
+                <div class="stat-item warning">
+                    <div class="stat-number" id="burndown">-</div>
+                    <div class="stat-label">Days to Launch</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="blockers">-</div>
+                    <div class="stat-label">Blockers</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="criticalCount">-</div>
+                    <div class="stat-label">Critical Issues</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FILTERS -->
+        <section class="filters">
+            <div class="filters-content">
+                <div class="filter-group">
+                    <label class="filter-label" for="assigneeFilter">Assignee:</label>
+                    <select id="assigneeFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="">All Team</option>
+                        <option value="Blake">Blake</option>
+                        <option value="Joe">Joe</option>
+                        <option value="Clara">Clara</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label" for="priorityFilter">Priority:</label>
+                    <select id="priorityFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="">All Priorities</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label" for="sprintFilter">Sprint:</label>
+                    <select id="sprintFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="">Current Sprint</option>
+                        <option value="1">Sprint 1 (Launch)</option>
+                        <option value="backlog">Product Backlog</option>
+                    </select>
+                </div>
+                
+                <input 
+                    type="search" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="Search tasks..." 
+                    onkeyup="applyFilters()"
+                >
+                
+                <button class="btn btn-secondary btn-sm" onclick="clearFilters()">
+                    Clear
+                </button>
+            </div>
+        </section>
+
+        <!-- KANBAN BOARD -->
+        <main class="board-container">
+            <div class="board">
+                <!-- BACKLOG -->
+                <div class="column" data-status="backlog">
+                    <div class="column-header">
+                        <div class="column-title">
+                            📋 Backlog
+                            <span class="column-count" id="backlog-count">0</span>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="addTaskToColumn('backlog')">
+                            ➕
+                        </button>
+                    </div>
+                    <div class="column-content" id="backlog-tasks">
+                        <div class="loading">Loading tasks...</div>
+                    </div>
+                </div>
+
+                <!-- IN PROGRESS -->
+                <div class="column" data-status="progress">
+                    <div class="column-header">
+                        <div class="column-title">
+                            🔄 In Progress
+                            <span class="column-count" id="progress-count">0</span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--gray-500);">WIP Limit: 5</div>
+                    </div>
+                    <div class="column-content" id="progress-tasks">
+                        <div class="loading">Loading tasks...</div>
+                    </div>
+                </div>
+
+                <!-- TESTING -->
+                <div class="column" data-status="testing">
+                    <div class="column-header">
+                        <div class="column-title">
+                            🧪 Testing
+                            <span class="column-count" id="testing-count">0</span>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="runAllTests()">
+                            ▶️ Run
+                        </button>
+                    </div>
+                    <div class="column-content" id="testing-tasks">
+                        <div class="loading">Loading tasks...</div>
+                    </div>
+                </div>
+
+                <!-- DONE -->
+                <div class="column" data-status="done">
+                    <div class="column-header">
+                        <div class="column-title">
+                            ✅ Done
+                            <span class="column-count" id="done-count">0</span>
+                        </div>
+                        <button class="btn btn-success btn-sm" onclick="celebrateCompletion()">
+                            🎉
+                        </button>
+                    </div>
+                    <div class="column-content" id="done-tasks">
+                        <div class="loading">Loading tasks...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- TASK MODAL -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle" class="modal-title">Add New Task</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="taskForm" onsubmit="submitTask(event)">
+                    <div class="form-group">
+                        <label for="taskTitle" class="form-label">Task Title *</label>
+                        <input type="text" id="taskTitle" class="form-input" required 
+                               placeholder="What needs to be done?">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="taskDescription" class="form-label">Description</label>
+                        <textarea id="taskDescription" class="form-textarea" 
+                                  placeholder="Detailed description, acceptance criteria, notes..."></textarea>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+                        <div class="form-group">
+                            <label for="taskPriority" class="form-label">Priority</label>
+                            <select id="taskPriority" class="form-select">
+                                <option value="low">🟢 Low</option>
+                                <option value="medium" selected>🔵 Medium</option>
+                                <option value="high">🟠 High</option>
+                                <option value="critical">🔴 Critical</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taskAssignee" class="form-label">Assignee</label>
+                            <select id="taskAssignee" class="form-select">
+                                <option value="">Unassigned</option>
+                                <option value="Blake">Blake (CEO/Dev)</option>
+                                <option value="Joe">Joe (Ops/QA)</option>
+                                <option value="Clara">Clara (AI PM)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+                        <div class="form-group">
+                            <label for="taskStatus" class="form-label">Status</label>
+                            <select id="taskStatus" class="form-select">
+                                <option value="backlog" selected>📋 Backlog</option>
+                                <option value="progress">🔄 In Progress</option>
+                                <option value="testing">🧪 Testing</option>
+                                <option value="done">✅ Done</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taskEstimate" class="form-label">Time Estimate</label>
+                            <select id="taskEstimate" class="form-select">
+                                <option value="">No estimate</option>
+                                <option value="1">1 hour</option>
+                                <option value="4">Half day</option>
+                                <option value="8">1 day</option>
+                                <option value="16">2 days</option>
+                                <option value="40">1 week</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="taskDueDate" class="form-label">Due Date</label>
+                        <input type="date" id="taskDueDate" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="taskTags" class="form-label">Tags</label>
+                        <input type="text" id="taskTags" class="form-input" 
+                               placeholder="bug, feature, documentation (comma separated)">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        Add Task
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- REPORTS MODAL -->
+    <div id="reportsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Sprint Reports</h2>
+                <span class="close" onclick="closeReportsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="sprintVelocity">8</div>
+                        <div class="stat-label">Tasks Completed This Sprint</div>
+                    </div>
+                    <div class="stat-item success">
+                        <div class="stat-number" id="bugFixRate">89%</div>
+                        <div class="stat-label">Bug Fix Rate</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="teamUtilization">92%</div>
+                        <div class="stat-label">Team Utilization</div>
+                    </div>
+                    <div class="stat-item warning">
+                        <div class="stat-number" id="avgCycleTime">2.3</div>
+                        <div class="stat-label">Avg Cycle Time (days)</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: var(--space-6);">
+                    <h3>Team Performance</h3>
+                    <div style="margin-top: var(--space-4);">
+                        <div style="margin-bottom: var(--space-3);">
+                            <strong>Blake:</strong> 3 tasks completed, focus on bug fixes and features
+                        </div>
+                        <div style="margin-bottom: var(--space-3);">
+                            <strong>Joe:</strong> 23 QA cases completed, excellent testing coverage
+                        </div>
+                        <div style="margin-bottom: var(--space-3);">
+                            <strong>Clara:</strong> 5 specs delivered, project management systems
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

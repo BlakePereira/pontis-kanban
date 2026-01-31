@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pontis Kanban - Login</title>
+    <style>
+        :root {
+          --pontis-blue: #2563eb;
+          --pontis-slate: #1e293b;
+          --gray-50: #f8fafc;
+          --gray-100: #f1f5f9;
+          --gray-200: #e2e8f0;
+          --gray-600: #475569;
+          --gray-900: #0f172a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: linear-gradient(135deg, var(--pontis-blue), var(--pontis-slate));
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .login-container {
+          background: white;
+          border-radius: 1rem;
+          padding: 3rem;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          width: 100%;
+          max-width: 400px;
+        }
+
+        .logo {
+          text-align: center;
+          margin-bottom: 2rem;
+        }
+
+        .logo h1 {
+          color: var(--pontis-blue);
+          font-size: 2rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .logo p {
+          color: var(--gray-600);
+          font-size: 1rem;
+        }
+
+        .form-group {
+          margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+          display: block;
+          margin-bottom: 0.5rem;
+          color: var(--gray-900);
+          font-weight: 500;
+        }
+
+        .form-input {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border: 1px solid var(--gray-200);
+          border-radius: 0.5rem;
+          font-size: 1rem;
+          transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+          outline: none;
+          border-color: var(--pontis-blue);
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .login-btn {
+          width: 100%;
+          background: var(--pontis-blue);
+          color: white;
+          border: none;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+
+        .login-btn:hover {
+          background: #1d4ed8;
+        }
+
+        .login-btn:disabled {
+          background: var(--gray-200);
+          color: var(--gray-600);
+          cursor: not-allowed;
+        }
+
+        .error-message {
+          color: #dc2626;
+          font-size: 0.875rem;
+          margin-top: 0.5rem;
+          text-align: center;
+        }
+
+        .security-note {
+          margin-top: 2rem;
+          text-align: center;
+          font-size: 0.875rem;
+          color: var(--gray-600);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>🚀 Pontis</h1>
+            <p>Project Management</p>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label for="password" class="form-label">Access Code</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    class="form-input" 
+                    placeholder="Enter your access code"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="login-btn" id="loginBtn">
+                Access Kanban Board
+            </button>
+
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+        </form>
+
+        <div class="security-note">
+            🔒 Secure access for Pontis team members only
+        </div>
+    </div>
+
+    <script>
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Verifying...';
+            errorMessage.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+                
+                if (response.ok) {
+                    // Success - redirect to kanban board
+                    window.location.href = '/';
+                } else {
+                    const error = await response.json();
+                    errorMessage.textContent = error.message || 'Invalid access code';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Connection error. Please try again.';
+                errorMessage.style.display = 'block';
+            } finally {
+                // Reset button state
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Access Kanban Board';
+            }
+        }
+
+        // Auto-focus password field
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('password').focus();
+        });
+
+        // Handle Enter key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                handleLogin(event);
+            }
+        });
+    </script>
+</body>
+</html>

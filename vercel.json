@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server-cloud.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/server-cloud.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/server-cloud.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "server-cloud.js": {
+      "maxDuration": 10
+    }
+  }
+}
