@@ -1,4 +1,4 @@
-// PONTIS KANBAN - PROFESSIONAL VERSION
+// PONTIS KANBAN - JWT AUTH VERSION
 let tasks = [];
 let filteredTasks = [];
 let currentTaskId = null;
@@ -9,66 +9,84 @@ let filters = {
     sprint: ''
 };
 
-// Initialize the app
+// ===== AUTH HELPERS =====
+function getToken() {
+    return localStorage.getItem('pontis_token');
+}
+
+function authHeaders(extra = {}) {
+    const token = getToken();
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...extra
+    };
+}
+
+function logout() {
+    localStorage.removeItem('pontis_token');
+    window.location.href = '/login';
+}
+
+// ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
-    // Check authentication first, then load tasks
     checkAuthAndLoadTasks();
     setupDragAndDrop();
     setupKeyboardShortcuts();
-    
+
     // Auto-refresh every 30 seconds
     setInterval(checkAuthAndLoadTasks, 30000);
-    
+
     console.log('🚀 Pontis Kanban loaded successfully');
 });
 
 async function checkAuthAndLoadTasks() {
+    const token = getToken();
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+
     try {
-        const response = await fetch('/api/auth/status');
+        const response = await fetch('/api/auth/status', {
+            headers: authHeaders()
+        });
+
         if (response.ok) {
-            const status = await response.json();
-            if (status.authenticated) {
-                console.log('Authenticated, loading tasks...');
-                loadTasks();
-            } else {
-                console.log('Not authenticated, redirecting...');
-                window.location.href = '/login';
-            }
+            loadTasks();
         } else {
-            console.log('Auth check failed, redirecting to login');
-            window.location.href = '/login';
+            logout();
         }
     } catch (error) {
         console.error('Auth check error:', error);
-        window.location.href = '/login';
+        logout();
     }
 }
 
 // ===== API FUNCTIONS =====
 async function loadTasks() {
     try {
-        const response = await fetch('/api/tasks');
-        
-        // Check if we need to authenticate
+        const response = await fetch('/api/tasks', {
+            headers: authHeaders()
+        });
+
         if (response.status === 401) {
-            console.log('Not authenticated, redirecting to login');
-            window.location.href = '/login';
+            logout();
             return;
         }
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         tasks = await response.json();
-        
-        // Ensure tasks is an array
+
         if (!Array.isArray(tasks)) {
             console.error('Tasks response is not an array:', tasks);
             tasks = [];
         }
-        
-        // Add mock data for professional features
+
+        // Add display metadata
         tasks = tasks.map(task => ({
             ...task,
             estimate: Math.floor(Math.random() * 24) + 1,
@@ -77,11 +95,11 @@ async function loadTasks() {
             created_by: task.assignee || 'System',
             sprint: 1
         }));
-        
+
         filteredTasks = [...tasks];
         renderTasks();
         updateAllStats();
-        
+
     } catch (error) {
         console.error('Error loading tasks:', error);
         showNotification('Failed to load tasks', 'error');
@@ -92,10 +110,12 @@ async function createTask(taskData) {
     try {
         const response = await fetch('/api/tasks', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders(),
             body: JSON.stringify(taskData)
         });
-        
+
+        if (response.status === 401) { logout(); return false; }
+
         if (response.ok) {
             await loadTasks();
             showNotification('Task created successfully', 'success');
@@ -113,10 +133,12 @@ async function updateTask(taskId, taskData) {
     try {
         const response = await fetch(`/api/tasks/${taskId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders(),
             body: JSON.stringify(taskData)
         });
-        
+
+        if (response.status === 401) { logout(); return false; }
+
         if (response.ok) {
             await loadTasks();
             showNotification('Task updated successfully', 'success');
@@ -134,19 +156,20 @@ async function updateTaskStatus(taskId, status) {
     try {
         const response = await fetch(`/api/tasks/${taskId}/status`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders(),
             body: JSON.stringify({ status })
         });
-        
+
+        if (response.status === 401) { logout(); return false; }
+
         if (response.ok) {
             await loadTasks();
             showNotification(`Task moved to ${status}`, 'success');
-            
-            // Celebration for completed tasks
+
             if (status === 'done') {
                 showCelebration();
             }
-            
+
             return true;
         }
         return false;
@@ -158,15 +181,16 @@ async function updateTaskStatus(taskId, status) {
 }
 
 async function deleteTask(taskId) {
-    if (!confirm('Are you sure you want to delete this task?')) {
-        return;
-    }
-    
+    if (!confirm('Are you sure you want to delete this task?')) return;
+
     try {
         const response = await fetch(`/api/tasks/${taskId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: authHeaders()
         });
-        
+
+        if (response.status === 401) { logout(); return false; }
+
         if (response.ok) {
             await loadTasks();
             showNotification('Task deleted successfully', 'success');
@@ -186,34 +210,18 @@ function applyFilters() {
     filters.priority = document.getElementById('priorityFilter').value;
     filters.search = document.getElementById('searchInput').value.toLowerCase();
     filters.sprint = document.getElementById('sprintFilter').value;
-    
+
     filteredTasks = tasks.filter(task => {
-        // Assignee filter
-        if (filters.assignee && task.assignee !== filters.assignee) {
-            return false;
-        }
-        
-        // Priority filter
-        if (filters.priority && task.priority !== filters.priority) {
-            return false;
-        }
-        
-        // Search filter
+        if (filters.assignee && task.assignee !== filters.assignee) return false;
+        if (filters.priority && task.priority !== filters.priority) return false;
         if (filters.search) {
             const searchText = (task.title + ' ' + (task.description || '')).toLowerCase();
-            if (!searchText.includes(filters.search)) {
-                return false;
-            }
+            if (!searchText.includes(filters.search)) return false;
         }
-        
-        // Sprint filter (simplified for now)
-        if (filters.sprint === 'backlog' && task.status !== 'backlog') {
-            return false;
-        }
-        
+        if (filters.sprint === 'backlog' && task.status !== 'backlog') return false;
         return true;
     });
-    
+
     renderTasks();
     updateAllStats();
 }
@@ -223,34 +231,28 @@ function clearFilters() {
     document.getElementById('priorityFilter').value = '';
     document.getElementById('searchInput').value = '';
     document.getElementById('sprintFilter').value = '';
-    
+
     filters = { assignee: '', priority: '', search: '', sprint: '' };
     filteredTasks = [...tasks];
-    
+
     renderTasks();
     updateAllStats();
-    
     showNotification('Filters cleared', 'info');
 }
 
 // ===== RENDERING =====
 function renderTasks() {
     const statuses = ['backlog', 'progress', 'testing', 'done'];
-    
+
     statuses.forEach(status => {
         const container = document.getElementById(`${status}-tasks`);
         const statusTasks = filteredTasks.filter(task => task.status === status);
-        
+
         if (statusTasks.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    ${getEmptyStateMessage(status)}
-                </div>
-            `;
+            container.innerHTML = `<div class="empty-state">${getEmptyStateMessage(status)}</div>`;
         } else {
             container.innerHTML = statusTasks
                 .sort((a, b) => {
-                    // Sort by priority then by creation date
                     const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
                     if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
                         return priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -260,14 +262,11 @@ function renderTasks() {
                 .map(task => createTaskCard(task))
                 .join('');
         }
-        
-        // Update count
+
         const countElement = document.getElementById(`${status}-count`);
-        if (countElement) {
-            countElement.textContent = statusTasks.length;
-        }
+        if (countElement) countElement.textContent = statusTasks.length;
     });
-    
+
     setupCardEventListeners();
 }
 
@@ -276,7 +275,7 @@ function createTaskCard(task) {
     const assigneeClass = task.assignee ? task.assignee.toLowerCase() : '';
     const daysUntilDue = task.due_date ? getDaysUntilDue(task.due_date) : null;
     const tags = task.tags ? task.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [];
-    
+
     return `
         <div class="card ${task.priority}" data-task-id="${task.id}" draggable="true">
             <div class="card-header">
@@ -285,31 +284,26 @@ function createTaskCard(task) {
                     ${assigneeInitials}
                 </div>
             </div>
-            
-            ${task.description ? `
-                <div class="card-description">
-                    ${escapeHtml(task.description)}
-                </div>
-            ` : ''}
-            
+
+            ${task.description ? `<div class="card-description">${escapeHtml(task.description)}</div>` : ''}
+
             <div class="card-meta">
                 <div class="priority-badge ${task.priority}">
                     ${getPriorityIcon(task.priority)} ${task.priority.toUpperCase()}
                 </div>
-                
                 ${daysUntilDue !== null ? `
                     <div class="card-date ${daysUntilDue < 0 ? 'overdue' : daysUntilDue <= 3 ? 'urgent' : ''}">
                         ${formatDueDate(daysUntilDue)}
                     </div>
                 ` : ''}
             </div>
-            
+
             ${task.estimate ? `
                 <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: var(--space-2);">
                     ⏱️ ${task.estimate}h estimate
                 </div>
             ` : ''}
-            
+
             ${tags.length > 0 ? `
                 <div style="margin-bottom: var(--space-3);">
                     ${tags.map(tag => `
@@ -319,7 +313,7 @@ function createTaskCard(task) {
                     `).join('')}
                 </div>
             ` : ''}
-            
+
             <div class="card-actions">
                 <button class="card-action-btn edit-btn" onclick="editTask(${task.id})" title="Edit task">
                     ✏️ Edit
@@ -332,32 +326,23 @@ function createTaskCard(task) {
     `;
 }
 
-// ===== STATISTICS & ANALYTICS =====
+// ===== STATISTICS =====
 function updateAllStats() {
-    // Basic counts
     document.getElementById('totalTasks').textContent = filteredTasks.length;
-    
-    // Sprint progress
+
     const completedTasks = filteredTasks.filter(t => t.status === 'done').length;
-    const sprintProgress = filteredTasks.length > 0 
-        ? Math.round((completedTasks / filteredTasks.length) * 100) 
+    const sprintProgress = filteredTasks.length > 0
+        ? Math.round((completedTasks / filteredTasks.length) * 100)
         : 0;
     document.getElementById('sprintProgress').textContent = `${sprintProgress}%`;
-    
-    // Velocity (completed tasks this sprint)
     document.getElementById('velocity').textContent = completedTasks;
-    
-    // Days to launch (static for now)
     document.getElementById('burndown').textContent = '14';
-    
-    // Blockers (high priority tasks not in progress)
-    const blockers = filteredTasks.filter(t => 
-        (t.priority === 'critical' || t.priority === 'high') && 
-        t.status === 'backlog'
+
+    const blockers = filteredTasks.filter(t =>
+        (t.priority === 'critical' || t.priority === 'high') && t.status === 'backlog'
     ).length;
     document.getElementById('blockers').textContent = blockers;
-    
-    // Critical issues
+
     const criticalCount = filteredTasks.filter(t => t.priority === 'critical').length;
     document.getElementById('criticalCount').textContent = criticalCount;
 }
@@ -380,12 +365,11 @@ function addTaskToColumn(status) {
 function editTask(taskId) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    
+
     currentTaskId = taskId;
     document.getElementById('modalTitle').textContent = 'Edit Task';
     document.getElementById('submitBtn').textContent = 'Update Task';
-    
-    // Populate form
+
     document.getElementById('taskTitle').value = task.title;
     document.getElementById('taskDescription').value = task.description || '';
     document.getElementById('taskPriority').value = task.priority;
@@ -394,7 +378,7 @@ function editTask(taskId) {
     document.getElementById('taskEstimate').value = task.estimate || '';
     document.getElementById('taskDueDate').value = task.due_date || '';
     document.getElementById('taskTags').value = task.tags || '';
-    
+
     document.getElementById('taskModal').style.display = 'block';
     document.getElementById('taskTitle').focus();
 }
@@ -414,7 +398,7 @@ function closeReportsModal() {
 
 async function submitTask(event) {
     event.preventDefault();
-    
+
     const taskData = {
         title: document.getElementById('taskTitle').value.trim(),
         description: document.getElementById('taskDescription').value.trim(),
@@ -425,29 +409,26 @@ async function submitTask(event) {
         due_date: document.getElementById('taskDueDate').value,
         tags: document.getElementById('taskTags').value
     };
-    
-    // Validation
+
     if (!taskData.title) {
         showNotification('Task title is required', 'error');
         return;
     }
-    
+
     let success;
     if (currentTaskId) {
         success = await updateTask(currentTaskId, taskData);
     } else {
         success = await createTask(taskData);
     }
-    
-    if (success) {
-        closeModal();
-    }
+
+    if (success) closeModal();
 }
 
 // ===== DRAG & DROP =====
 function setupDragAndDrop() {
     const columns = document.querySelectorAll('.column');
-    
+
     columns.forEach(column => {
         column.addEventListener('dragover', handleDragOver);
         column.addEventListener('drop', handleDrop);
@@ -475,9 +456,7 @@ function handleDragStart(event) {
 
 function handleDragEnd(event) {
     const card = event.target.closest('.card');
-    if (card) {
-        card.classList.remove('dragging');
-    }
+    if (card) card.classList.remove('dragging');
 }
 
 function handleDragOver(event) {
@@ -487,9 +466,7 @@ function handleDragOver(event) {
 
 function handleDragEnter(event) {
     const column = event.target.closest('.column');
-    if (column) {
-        column.classList.add('drag-over');
-    }
+    if (column) column.classList.add('drag-over');
 }
 
 function handleDragLeave(event) {
@@ -501,17 +478,16 @@ function handleDragLeave(event) {
 
 async function handleDrop(event) {
     event.preventDefault();
-    
+
     const column = event.target.closest('.column');
     if (!column) return;
-    
+
     column.classList.remove('drag-over');
-    
+
     const taskId = event.dataTransfer.getData('text/plain');
     const newStatus = column.dataset.status;
-    
+
     if (taskId && newStatus) {
-        // Check WIP limits
         if (newStatus === 'progress') {
             const currentWIP = filteredTasks.filter(t => t.status === 'progress').length;
             if (currentWIP >= 5) {
@@ -519,7 +495,7 @@ async function handleDrop(event) {
                 return;
             }
         }
-        
+
         await updateTaskStatus(parseInt(taskId), newStatus);
     }
 }
@@ -527,25 +503,18 @@ async function handleDrop(event) {
 // ===== KEYBOARD SHORTCUTS =====
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', function(event) {
-        // ESC to close modals
         if (event.key === 'Escape') {
             closeModal();
             closeReportsModal();
         }
-        
-        // Ctrl+N to add new task
         if (event.ctrlKey && event.key === 'n') {
             event.preventDefault();
             openAddTaskModal();
         }
-        
-        // Ctrl+F to focus search
         if (event.ctrlKey && event.key === 'f') {
             event.preventDefault();
             document.getElementById('searchInput').focus();
         }
-        
-        // F5 or Ctrl+R to refresh
         if (event.key === 'F5' || (event.ctrlKey && event.key === 'r')) {
             event.preventDefault();
             loadTasks();
@@ -561,12 +530,7 @@ function getAssigneeInitials(assignee) {
 }
 
 function getPriorityIcon(priority) {
-    const icons = {
-        critical: '🔴',
-        high: '🟠',
-        medium: '🔵',
-        low: '🟢'
-    };
+    const icons = { critical: '🔴', high: '🟠', medium: '🔵', low: '🟢' };
     return icons[priority] || '⚪';
 }
 
@@ -584,8 +548,7 @@ function getDaysUntilDue(dueDate) {
     if (!dueDate) return null;
     const today = new Date();
     const due = new Date(dueDate);
-    const diffTime = due.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function formatDueDate(days) {
@@ -598,15 +561,14 @@ function formatDueDate(days) {
 function getRandomTags() {
     const allTags = ['bug', 'feature', 'urgent', 'backend', 'frontend', 'qa', 'docs', 'security'];
     const numTags = Math.floor(Math.random() * 3);
-    const shuffled = allTags.sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, numTags).join(', ');
+    return allTags.sort(() => 0.5 - Math.random()).slice(0, numTags).join(', ');
 }
 
 function getRandomDueDate() {
-    const days = Math.floor(Math.random() * 14) + 1; // 1-14 days from now
+    const days = Math.floor(Math.random() * 14) + 1;
     const date = new Date();
     date.setDate(date.getDate() + days);
-    return Math.random() > 0.3 ? date.toISOString().split('T')[0] : null; // 70% chance of having due date
+    return Math.random() > 0.3 ? date.toISOString().split('T')[0] : null;
 }
 
 function escapeHtml(text) {
@@ -616,93 +578,57 @@ function escapeHtml(text) {
 }
 
 function showNotification(message, type = 'info') {
-    // Simple notification system
     const notification = document.createElement('div');
     notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
+        position: fixed; top: 20px; right: 20px;
         background: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--error)' : 'var(--info)'};
-        color: white;
-        padding: var(--space-3) var(--space-4);
-        border-radius: var(--radius-lg);
-        z-index: 10000;
+        color: white; padding: var(--space-3) var(--space-4);
+        border-radius: var(--radius-lg); z-index: 10000;
         animation: slideInRight 0.3s ease;
     `;
     notification.textContent = message;
-    
     document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
+    setTimeout(() => notification.remove(), 3000);
 }
 
 function showCelebration() {
-    // Celebration effect for completed tasks
     const celebration = document.createElement('div');
     celebration.textContent = '🎉';
     celebration.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        font-size: 4rem;
-        z-index: 10000;
-        animation: bounce 0.6s ease;
-        pointer-events: none;
+        position: fixed; top: 50%; left: 50%;
+        font-size: 4rem; z-index: 10000;
+        animation: bounce 0.6s ease; pointer-events: none;
     `;
-    
     document.body.appendChild(celebration);
-    
-    setTimeout(() => {
-        celebration.remove();
-    }, 600);
+    setTimeout(() => celebration.remove(), 600);
 }
 
-// ===== ADDITIONAL FEATURES =====
-function toggleSprint() {
-    // Sprint view toggle (placeholder)
-    showNotification('Sprint view toggle coming soon!', 'info');
-}
-
+function toggleSprint() { showNotification('Sprint view toggle coming soon!', 'info'); }
 function runAllTests() {
     showNotification('Running all QA tests...', 'info');
-    // Simulate test run
-    setTimeout(() => {
-        showNotification('All tests passed! ✅', 'success');
-    }, 2000);
+    setTimeout(() => showNotification('All tests passed! ✅', 'success'), 2000);
 }
-
 function celebrateCompletion() {
     showCelebration();
     showNotification('Great work team! 🚀', 'success');
 }
 
-// Close modals when clicking outside
 window.onclick = function(event) {
-    const taskModal = document.getElementById('taskModal');
-    const reportsModal = document.getElementById('reportsModal');
-    
-    if (event.target === taskModal) {
-        closeModal();
-    } else if (event.target === reportsModal) {
-        closeReportsModal();
-    }
-}
+    if (event.target === document.getElementById('taskModal')) closeModal();
+    else if (event.target === document.getElementById('reportsModal')) closeReportsModal();
+};
 
-// Add CSS animations
+// CSS animations
 const style = document.createElement('style');
 style.textContent = `
     @keyframes slideInRight {
         from { transform: translateX(100%); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
-    
     @keyframes bounce {
         0%, 100% { transform: translate(-50%, -50%) scale(1); }
         50% { transform: translate(-50%, -50%) scale(1.2); }
     }
-    
     .overdue { color: var(--error) !important; font-weight: bold; }
     .urgent { color: var(--warning) !important; font-weight: bold; }
 `;

@@ -148,6 +148,11 @@
     </div>
 
     <script>
+        // If already logged in, go straight to board
+        if (localStorage.getItem('pontis_token')) {
+            window.location.href = '/';
+        }
+
         async function handleLogin(event) {
             event.preventDefault();
             
@@ -155,7 +160,6 @@
             const loginBtn = document.getElementById('loginBtn');
             const errorMessage = document.getElementById('errorMessage');
             
-            // Show loading state
             loginBtn.disabled = true;
             loginBtn.textContent = 'Verifying...';
             errorMessage.style.display = 'none';
@@ -163,20 +167,15 @@
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password })
                 });
                 
                 if (response.ok) {
-                    // Success - small delay then redirect to ensure session is saved
                     const result = await response.json();
-                    console.log('Login successful:', result);
-                    
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 500); // Small delay to ensure session is saved
+                    // Store JWT in localStorage — survives serverless cold starts
+                    localStorage.setItem('pontis_token', result.token);
+                    window.location.href = '/';
                 } else {
                     const error = await response.json();
                     errorMessage.textContent = error.message || 'Invalid access code';
@@ -186,18 +185,15 @@
                 errorMessage.textContent = 'Connection error. Please try again.';
                 errorMessage.style.display = 'block';
             } finally {
-                // Reset button state
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Access Kanban Board';
             }
         }
 
-        // Auto-focus password field
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('password').focus();
         });
 
-        // Handle Enter key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
                 event.preventDefault();

@@ -1,9 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const session = require('express-session');
 const database = require('./database');
-const { requireAuth, authenticatePassword } = require('./auth');
+const { requireAuth, authenticatePassword, generateToken, verifyToken } = require('./auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,21 +11,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Session middleware - configured for serverless deployment
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'pontis-kanban-secret-key',
-  resave: true,  // Changed to true for serverless
-  saveUninitialized: true,  // Changed to true for serverless
-  rolling: true,  // Refresh session on each request
-  cookie: {
-    secure: false,
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours (shorter for serverless)
-    sameSite: 'lax'
-  }
-}));
-
-// Serve static files with no-cache headers for development
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {
     if (process.env.NODE_ENV !== 'production') {
@@ -37,74 +22,59 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// Authentication Routes
+// ===== Authentication Routes =====
 
-// Login endpoint
+// Login endpoint — returns JWT
 app.post('/api/login', (req, res) => {
   const { password } = req.body;
-  
+
   if (!password) {
     return res.status(400).json({ message: 'Password is required' });
   }
-  
+
   if (authenticatePassword(password)) {
-    req.session.authenticated = true;
-    req.session.loginTime = new Date().toISOString();
-    
-    // Save session explicitly
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.status(500).json({ message: 'Session error' });
-      }
-      res.json({ 
-        message: 'Authentication successful',
-        sessionId: req.session.id,
-        redirect: '/'
-      });
+    const token = generateToken();
+    res.json({
+      message: 'Authentication successful',
+      token,
+      redirect: '/'
     });
   } else {
     res.status(401).json({ message: 'Invalid access code' });
   }
 });
 
-// Session status endpoint
+// Session status — validates JWT
 app.get('/api/auth/status', (req, res) => {
-  if (req.session && req.session.authenticated) {
-    res.json({ 
-      authenticated: true, 
-      loginTime: req.session.loginTime,
-      sessionId: req.session.id 
-    });
-  } else {
-    res.status(401).json({ authenticated: false });
-  }
-});
-
-// Logout endpoint
-app.post('/api/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ message: 'Error logging out' });
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const payload = verifyToken(authHeader.slice(7));
+    if (payload) {
+      return res.json({
+        authenticated: true,
+        loginTime: payload.loginTime
+      });
     }
-    res.json({ message: 'Logged out successfully' });
-  });
+  }
+  res.status(401).json({ authenticated: false });
 });
 
-// Login page
+// Logout (client-side only — just clears localStorage)
+app.post('/api/logout', (req, res) => {
+  res.json({ message: 'Logged out successfully' });
+});
+
+// Login page (served as static HTML, no auth needed)
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Protected API Routes
+// ===== Protected API Routes =====
 
 // Get all tasks
 app.get('/api/tasks', requireAuth, (req, res) => {
   database.getAllTasks((err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+    if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 });
@@ -112,12 +82,11 @@ app.get('/api/tasks', requireAuth, (req, res) => {
 // Create new task
 app.post('/api/tasks', requireAuth, (req, res) => {
   const { title, description, priority, assignee, status } = req.body;
-  
-  // Basic validation
+
   if (!title || title.trim() === '') {
     return res.status(400).json({ error: 'Task title is required' });
   }
-  
+
   const taskData = {
     title: title.trim(),
     description: description ? description.trim() : '',
@@ -125,29 +94,21 @@ app.post('/api/tasks', requireAuth, (req, res) => {
     assignee: assignee || '',
     status: status || 'backlog'
   };
-  
+
   database.createTask(taskData, (err, result) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json({
-      id: result.lastID,
-      ...taskData,
-      message: 'Task created successfully'
-    });
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ id: result.lastID, ...taskData, message: 'Task created successfully' });
   });
 });
 
 // Update task
 app.put('/api/tasks/:id', requireAuth, (req, res) => {
-  const taskId = req.params.id;
   const { title, description, priority, assignee, status } = req.body;
-  
+
   if (!title || title.trim() === '') {
     return res.status(400).json({ error: 'Task title is required' });
   }
-  
+
   const taskData = {
     title: title.trim(),
     description: description ? description.trim() : '',
@@ -155,58 +116,47 @@ app.put('/api/tasks/:id', requireAuth, (req, res) => {
     assignee: assignee || '',
     status: status || 'backlog'
   };
-  
-  database.updateTask(taskId, taskData, (err, result) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+
+  database.updateTask(req.params.id, taskData, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Task updated successfully', changes: result.changes });
   });
 });
 
-// Update task status (for drag and drop)
+// Update task status (drag & drop)
 app.patch('/api/tasks/:id/status', requireAuth, (req, res) => {
-  const taskId = req.params.id;
   const { status } = req.body;
-  
+
   if (!status) {
     return res.status(400).json({ error: 'Status is required' });
   }
-  
-  database.updateTaskStatus(taskId, status, (err, result) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+
+  database.updateTaskStatus(req.params.id, status, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Task status updated', changes: result.changes });
   });
 });
 
 // Delete task
 app.delete('/api/tasks/:id', requireAuth, (req, res) => {
-  const taskId = req.params.id;
-  
-  database.deleteTask(taskId, (err, result) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+  database.deleteTask(req.params.id, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Task deleted', changes: result.changes });
   });
 });
 
-// Health check endpoint
+// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Serve the frontend
-app.get('/', requireAuth, (req, res) => {
+// Serve the frontend (check JWT from query param or redirect to login)
+app.get('/', (req, res) => {
+  // The frontend handles auth check via JS — just serve the page
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -225,24 +175,15 @@ app.use((err, req, res, next) => {
 const server = app.listen(PORT, () => {
   console.log(`\n🚀 Pontis Kanban Board running on port ${PORT}`);
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 Ready for cloud deployment!`);
+  console.log(`🔐 Auth: JWT-based (serverless-safe)`);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    database.close();
-    process.exit(0);
-  });
+  server.close(() => { database.close(); process.exit(0); });
 });
-
 process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    database.close();
-    process.exit(0);
-  });
+  server.close(() => { database.close(); process.exit(0); });
 });
 
 module.exports = app;
