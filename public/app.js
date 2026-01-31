@@ -25,7 +25,25 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadTasks() {
     try {
         const response = await fetch('/api/tasks');
+        
+        // Check if we need to authenticate
+        if (response.status === 401) {
+            console.log('Not authenticated, redirecting to login');
+            window.location.href = '/login';
+            return;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         tasks = await response.json();
+        
+        // Ensure tasks is an array
+        if (!Array.isArray(tasks)) {
+            console.error('Tasks response is not an array:', tasks);
+            tasks = [];
+        }
         
         // Add mock data for professional features
         tasks = tasks.map(task => ({
