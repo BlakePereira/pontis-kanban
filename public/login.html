@@ -170,8 +170,13 @@
                 });
                 
                 if (response.ok) {
-                    // Success - redirect to kanban board
-                    window.location.href = '/';
+                    // Success - small delay then redirect to ensure session is saved
+                    const result = await response.json();
+                    console.log('Login successful:', result);
+                    
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 500); // Small delay to ensure session is saved
                 } else {
                     const error = await response.json();
                     errorMessage.textContent = error.message || 'Invalid access code';

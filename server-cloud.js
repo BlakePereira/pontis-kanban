@@ -12,15 +12,16 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Session middleware
+// Session middleware - configured for serverless deployment
 app.use(session({
   secret: process.env.SESSION_SECRET || 'pontis-kanban-secret-key',
-  resave: false,
-  saveUninitialized: false,
+  resave: true,  // Changed to true for serverless
+  saveUninitialized: true,  // Changed to true for serverless
+  rolling: true,  // Refresh session on each request
   cookie: {
-    secure: false, // Set to false for now to work on all platforms
+    secure: false,
     httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours (shorter for serverless)
     sameSite: 'lax'
   }
 }));
@@ -48,9 +49,35 @@ app.post('/api/login', (req, res) => {
   
   if (authenticatePassword(password)) {
     req.session.authenticated = true;
-    res.json({ message: 'Authentication successful' });
+    req.session.loginTime = new Date().toISOString();
+    
+    // Save session explicitly
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ message: 'Session error' });
+      }
+      res.json({ 
+        message: 'Authentication successful',
+        sessionId: req.session.id,
+        redirect: '/'
+      });
+    });
   } else {
     res.status(401).json({ message: 'Invalid access code' });
+  }
+});
+
+// Session status endpoint
+app.get('/api/auth/status', (req, res) => {
+  if (req.session && req.session.authenticated) {
+    res.json({ 
+      authenticated: true, 
+      loginTime: req.session.loginTime,
+      sessionId: req.session.id 
+    });
+  } else {
+    res.status(401).json({ authenticated: false });
   }
 });
 

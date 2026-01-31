@@ -11,15 +11,38 @@ let filters = {
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
-    loadTasks();
+    // Check authentication first, then load tasks
+    checkAuthAndLoadTasks();
     setupDragAndDrop();
     setupKeyboardShortcuts();
     
     // Auto-refresh every 30 seconds
-    setInterval(loadTasks, 30000);
+    setInterval(checkAuthAndLoadTasks, 30000);
     
     console.log('🚀 Pontis Kanban loaded successfully');
 });
+
+async function checkAuthAndLoadTasks() {
+    try {
+        const response = await fetch('/api/auth/status');
+        if (response.ok) {
+            const status = await response.json();
+            if (status.authenticated) {
+                console.log('Authenticated, loading tasks...');
+                loadTasks();
+            } else {
+                console.log('Not authenticated, redirecting...');
+                window.location.href = '/login';
+            }
+        } else {
+            console.log('Auth check failed, redirecting to login');
+            window.location.href = '/login';
+        }
+    } catch (error) {
+        console.error('Auth check error:', error);
+        window.location.href = '/login';
+    }
+}
 
 // ===== API FUNCTIONS =====
 async function loadTasks() {
