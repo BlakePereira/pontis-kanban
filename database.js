@@ -52,97 +52,173 @@ class Database {
         return;
       }
       
-      console.log('Seeding database with Blake\'s real tasks...');
+      console.log('Seeding database with current Pontis tasks...');
       
-      // Import all the real tasks from Blake's project
       const realTasks = [
+        // ===== BACKLOG =====
         {
           title: 'BUG-001: QR Code Goes Directly to Memorial Page',
-          description: 'Critical QR routing issue - race condition in Memorial.tsx',
+          description: 'Critical QR routing issue - race condition in Memorial.tsx. QR should route through claim flow, not directly to memorial.',
           priority: 'critical',
           assignee: 'Blake',
           status: 'backlog'
         },
         {
           title: 'BUG-002: Address Data Not Parsing Correctly',
-          description: 'Full address stored in street field only, breaks commissions and service areas',
+          description: 'Full address stored in street field only, breaks commissions and service areas. Need proper address component parsing.',
           priority: 'critical',
           assignee: 'Blake',
           status: 'backlog'
         },
         {
           title: 'BUG-003: Orders Not Showing in Partner Portal',
-          description: 'Care subscription orders not appearing in partner portal',
+          description: 'Care subscription orders not appearing in partner portal dashboard. Partners cant see revenue.',
           priority: 'critical',
           assignee: 'Blake',
           status: 'backlog'
         },
         {
           title: 'Setup Clara Staging Environment',
-          description: 'Separate Supabase project for safe development access',
+          description: 'Separate Supabase project for safe dev access. Clara needs staging credentials to help with development without touching production.',
           priority: 'critical',
           assignee: 'Clara',
           status: 'backlog'
         },
         {
           title: 'Per-Fulfillment-Partner Pricing',
-          description: 'Each service provider sets their own rates instead of global pricing',
+          description: 'Each service provider sets their own rates instead of global pricing. Critical for multi-market expansion.',
           priority: 'high',
           assignee: 'Blake',
           status: 'backlog'
         },
         {
           title: 'Subscription Flow UX Improvements',
-          description: 'Improve value proposition messaging and skip button placement',
+          description: 'Improve value proposition messaging and skip button placement. 75% of customers are elderly - needs to be dead simple.',
           priority: 'high',
           assignee: 'Blake',
           status: 'backlog'
         },
         {
-          title: 'QA Testing Session 2',
-          description: 'Working through memorial flows and subscription testing',
+          title: 'Email Deliverability Setup',
+          description: 'SPF, DKIM, DMARC for pontis.life domain. Need email warm-up before sending to customers. Critical for onboarding flow.',
+          priority: 'high',
+          assignee: 'Blake',
+          status: 'backlog'
+        },
+        {
+          title: 'Elderly-Friendly Onboarding Flow',
+          description: '75% of monument shop customers cant do tech setup. Need phone-assisted or ultra-simple claim flow. Biggest adoption risk.',
+          priority: 'high',
+          assignee: 'Blake',
+          status: 'backlog'
+        },
+        {
+          title: 'GPS Offline Fallback for Cemetery Scans',
+          description: 'Cemetery cell coverage is often poor. Need offline-capable QR scan + GPS workflow or manual fallback.',
+          priority: 'medium',
+          assignee: 'Blake',
+          status: 'backlog'
+        },
+        {
+          title: 'Subscription Bundling (Flower + Cleaning)',
+          description: 'Families should be able to subscribe to flower delivery + headstone cleaning as a combo package at a discount.',
+          priority: 'medium',
+          assignee: 'Blake',
+          status: 'backlog'
+        },
+
+        // ===== IN PROGRESS =====
+        {
+          title: 'QA Testing - Full Platform Walkthrough',
+          description: 'Working through all user flows: memorial creation, QR scanning, subscriptions, partner portal, admin. 108 test cases.',
           priority: 'high',
           assignee: 'Joe',
           status: 'progress'
         },
         {
-          title: 'Fix Remaining Critical Bugs',
-          description: 'Address bugs found in QA testing',
+          title: 'Fix Remaining Critical Bugs from QA',
+          description: 'Address bugs found in Joe QA testing sessions. Working through critical and major issues.',
           priority: 'critical',
           assignee: 'Blake',
           status: 'progress'
         },
         {
-          title: 'Verify Yesterday\'s Bug Fixes',
-          description: '8 critical and major bugs fixed need final QA verification',
+          title: 'Prospect Database Build (500+ Companies)',
+          description: '37/500 monument companies researched. Enriched contact info, tech scores, geographic coverage across 6 US regions. Due Feb 2.',
+          priority: 'high',
+          assignee: 'Clara',
+          status: 'progress'
+        },
+        {
+          title: 'Weekly Grant Intelligence Report',
+          description: 'Recurring weekly research - grants Pontis qualifies for (tech, preservation, veterans, small biz, Utah). Report #1 complete.',
+          priority: 'high',
+          assignee: 'Clara',
+          status: 'progress'
+        },
+
+        // ===== TESTING =====
+        {
+          title: 'Verify 8 Critical Bug Fixes (Session 1)',
+          description: 'QR routing, email validation, portal auth, partner signup - 8 critical bugs fixed, need final QA verification.',
           priority: 'high',
           assignee: 'Joe',
           status: 'testing'
         },
+
+        // ===== DONE =====
         {
-          title: 'Fixed 8 Critical Bugs (Session 1)',
-          description: 'QR routing, email validation, portal auth - all resolved!',
+          title: 'Fixed 8 Critical Bugs (QA Session 1)',
+          description: 'QR routing, email validation, portal auth, and 5 other critical issues resolved.',
           priority: 'critical',
           assignee: 'Blake',
           status: 'done'
         },
         {
-          title: 'Comprehensive QA Test Plan',
-          description: '108 test cases covering all user flows and edge cases',
+          title: 'Comprehensive QA Test Plan (108 Cases)',
+          description: 'Full test plan covering all user flows, edge cases, and regression tests for the entire platform.',
           priority: 'high',
           assignee: 'Clara',
           status: 'done'
         },
         {
           title: 'Blake Brain System',
-          description: 'Personal growth tracking with weekly reports and scripture study',
+          description: 'Personal growth tracking with weekly reports, scripture study tracker, and goal scorecards.',
           priority: 'medium',
           assignee: 'Clara',
           status: 'done'
         },
         {
-          title: 'Professional Kanban Board',
-          description: 'Cloud-deployed task management system',
+          title: 'Cloud Kanban Board',
+          description: 'Deployed project management board on Vercel with JWT auth, drag-drop, team filters.',
+          priority: 'high',
+          assignee: 'Clara',
+          status: 'done'
+        },
+        {
+          title: 'Codebase Analysis (1,226 Files)',
+          description: 'Full technical architecture review: 26 DB tables, 25 edge functions, 134 migrations, 4 user portals.',
+          priority: 'high',
+          assignee: 'Clara',
+          status: 'done'
+        },
+        {
+          title: 'Competitive Landscape Research',
+          description: 'Analysis of competitors in QR memorial space, pricing, features, market positioning.',
+          priority: 'medium',
+          assignee: 'Clara',
+          status: 'done'
+        },
+        {
+          title: 'Partner Success Framework',
+          description: 'Comprehensive system for tracking monument company partner health, onboarding, QBRs.',
+          priority: 'medium',
+          assignee: 'Clara',
+          status: 'done'
+        },
+        {
+          title: 'Grant Report #1 Delivered',
+          description: 'First weekly grant intelligence report - identified multiple relevant grants with deadlines and eligibility.',
           priority: 'high',
           assignee: 'Clara',
           status: 'done'
