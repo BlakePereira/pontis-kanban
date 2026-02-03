@@ -81,7 +81,7 @@ app.get('/api/tasks', requireAuth, (req, res) => {
 
 // Create new task
 app.post('/api/tasks', requireAuth, (req, res) => {
-  const { title, description, priority, assignee, status } = req.body;
+  const { title, description, priority, assignee, status, board } = req.body;
 
   if (!title || title.trim() === '') {
     return res.status(400).json({ error: 'Task title is required' });
@@ -97,12 +97,17 @@ app.post('/api/tasks', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Priority must be one of: critical, high, medium, low' });
   }
 
+  // Validate board values
+  const validBoards = ['pontis-dev', 'pontis-ops', 'personal'];
+  const taskBoard = board && validBoards.includes(board) ? board : 'pontis-dev';
+
   const taskData = {
     title: title.trim(),
     description: description ? description.trim() : '',
     priority: priority.toLowerCase(),
     assignee: assignee || '',
-    status: status || 'backlog'
+    status: status || 'backlog',
+    board: taskBoard
   };
 
   database.createTask(taskData, (err, result) => {
@@ -118,18 +123,22 @@ app.post('/api/tasks', requireAuth, (req, res) => {
 
 // Update task
 app.put('/api/tasks/:id', requireAuth, (req, res) => {
-  const { title, description, priority, assignee, status } = req.body;
+  const { title, description, priority, assignee, status, board } = req.body;
 
   if (!title || title.trim() === '') {
     return res.status(400).json({ error: 'Task title is required' });
   }
+
+  const validBoards = ['pontis-dev', 'pontis-ops', 'personal'];
+  const taskBoard = board && validBoards.includes(board) ? board : 'pontis-dev';
 
   const taskData = {
     title: title.trim(),
     description: description ? description.trim() : '',
     priority: priority || 'medium',
     assignee: assignee || '',
-    status: status || 'backlog'
+    status: status || 'backlog',
+    board: taskBoard
   };
 
   database.updateTask(req.params.id, taskData, (err, result) => {

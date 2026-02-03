@@ -2,11 +2,13 @@
 let tasks = [];
 let filteredTasks = [];
 let currentTaskId = null;
+let currentBoard = 'pontis-dev';
 let filters = {
     assignee: '',
     priority: '',
     search: '',
-    sprint: ''
+    sprint: '',
+    board: 'pontis-dev'
 };
 
 // ===== AUTH HELPERS =====
@@ -212,10 +214,14 @@ function applyFilters() {
     filters.sprint = document.getElementById('sprintFilter').value;
 
     filteredTasks = tasks.filter(task => {
+        // Always filter by current board
+        const taskBoard = task.board || 'pontis-dev';
+        if (taskBoard !== currentBoard) return false;
+        
         if (filters.assignee && task.assignee !== filters.assignee) return false;
         if (filters.priority && task.priority !== filters.priority) return false;
         if (filters.search) {
-            const searchText = (task.title + ' ' + (task.description || '')).toLowerCase();
+            const searchText = (task.title + ' ' + (task.description || '') + ' ' + (task.task_code || '')).toLowerCase();
             if (!searchText.includes(filters.search)) return false;
         }
         if (filters.sprint === 'backlog' && task.status !== 'backlog') return false;
@@ -232,12 +238,35 @@ function clearFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('sprintFilter').value = '';
 
-    filters = { assignee: '', priority: '', search: '', sprint: '' };
-    filteredTasks = [...tasks];
-
-    renderTasks();
-    updateAllStats();
+    filters = { assignee: '', priority: '', search: '', sprint: '', board: currentBoard };
+    applyFilters();
     showNotification('Filters cleared', 'info');
+}
+
+function switchBoard(board) {
+    currentBoard = board;
+    filters.board = board;
+    
+    // Update tab UI
+    document.querySelectorAll('.board-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.board === board);
+    });
+    
+    // Update board selector in modal if open
+    const boardSelect = document.getElementById('taskBoard');
+    if (boardSelect) {
+        boardSelect.value = board;
+    }
+    
+    applyFilters();
+    
+    // Update header subtitle based on board
+    const subtitles = {
+        'pontis-dev': 'Development & Bugs',
+        'pontis-ops': 'Business & Operations', 
+        'personal': 'Personal Tasks'
+    };
+    document.querySelector('.subtitle').textContent = subtitles[board] || 'Project Management';
 }
 
 // ===== RENDERING =====
@@ -360,6 +389,8 @@ function openAddTaskModal() {
     document.getElementById('modalTitle').textContent = 'Add New Task';
     document.getElementById('submitBtn').textContent = 'Add Task';
     document.getElementById('taskForm').reset();
+    // Default to current board
+    document.getElementById('taskBoard').value = currentBoard;
     document.getElementById('taskModal').style.display = 'block';
     document.getElementById('taskTitle').focus();
 }
@@ -382,6 +413,7 @@ function editTask(taskId) {
     document.getElementById('taskPriority').value = task.priority;
     document.getElementById('taskAssignee').value = task.assignee || '';
     document.getElementById('taskStatus').value = task.status;
+    document.getElementById('taskBoard').value = task.board || 'pontis-dev';
     document.getElementById('taskEstimate').value = task.estimate || '';
     document.getElementById('taskDueDate').value = task.due_date || '';
     document.getElementById('taskTags').value = task.tags || '';
@@ -412,6 +444,7 @@ async function submitTask(event) {
         priority: document.getElementById('taskPriority').value,
         assignee: document.getElementById('taskAssignee').value,
         status: document.getElementById('taskStatus').value,
+        board: document.getElementById('taskBoard').value,
         estimate: document.getElementById('taskEstimate').value,
         due_date: document.getElementById('taskDueDate').value,
         tags: document.getElementById('taskTags').value

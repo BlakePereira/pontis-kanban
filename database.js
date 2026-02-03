@@ -118,6 +118,7 @@ class Database {
         priority: taskData.priority,
         assignee: taskData.assignee || '',
         status: taskData.status || 'backlog',
+        board: taskData.board || 'pontis-dev',
         task_code: taskCode
       };
 
@@ -182,6 +183,7 @@ class Database {
       priority: taskData.priority || 'medium',
       assignee: taskData.assignee || '',
       status: taskData.status || 'backlog',
+      board: taskData.board || 'pontis-dev',
       updated_at: new Date().toISOString()
     };
     

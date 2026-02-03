@@ -708,6 +708,37 @@ body {
   border: 0;
 }
 
+/* BOARD TABS */
+.board-tabs {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.board-tab {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: transparent;
+  color: var(--gray-600);
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.board-tab:hover {
+  background: var(--gray-200);
+  color: var(--gray-800);
+}
+
+.board-tab.active {
+  background: var(--pontis-primary);
+  color: white;
+}
+
 /* TASK CODE BADGE */
 .task-code {
   display: inline-flex;

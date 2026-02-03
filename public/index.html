@@ -17,9 +17,6 @@
                     <div class="subtitle">Project Management • Sprint 1</div>
                 </div>
                 <div class="header-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="toggleSprint()">
-                        📊 Sprint View
-                    </button>
                     <button class="btn btn-secondary btn-sm" onclick="openReportsModal()">
                         📈 Reports
                     </button>
@@ -29,6 +26,19 @@
                 </div>
             </div>
         </header>
+
+        <!-- BOARD TABS -->
+        <nav class="board-tabs">
+            <button class="board-tab active" data-board="pontis-dev" onclick="switchBoard('pontis-dev')">
+                🐛 Pontis Dev
+            </button>
+            <button class="board-tab" data-board="pontis-ops" onclick="switchBoard('pontis-ops')">
+                🚀 Pontis Ops
+            </button>
+            <button class="board-tab" data-board="personal" onclick="switchBoard('personal')">
+                🏠 Personal
+            </button>
+        </nav>
 
         <!-- STATS DASHBOARD -->
         <section class="stats">
@@ -230,16 +240,25 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="taskEstimate" class="form-label">Time Estimate</label>
-                            <select id="taskEstimate" class="form-select">
-                                <option value="">No estimate</option>
-                                <option value="1">1 hour</option>
-                                <option value="4">Half day</option>
-                                <option value="8">1 day</option>
-                                <option value="16">2 days</option>
-                                <option value="40">1 week</option>
+                            <label for="taskBoard" class="form-label">Board</label>
+                            <select id="taskBoard" class="form-select">
+                                <option value="pontis-dev">🐛 Pontis Dev</option>
+                                <option value="pontis-ops">🚀 Pontis Ops</option>
+                                <option value="personal">🏠 Personal</option>
                             </select>
                         </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="taskEstimate" class="form-label">Time Estimate</label>
+                        <select id="taskEstimate" class="form-select">
+                            <option value="">No estimate</option>
+                            <option value="1">1 hour</option>
+                            <option value="4">Half day</option>
+                            <option value="8">1 day</option>
+                            <option value="16">2 days</option>
+                            <option value="40">1 week</option>
+                        </select>
                     </div>
                     
                     <div class="form-group">
