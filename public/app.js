@@ -98,9 +98,8 @@ async function loadTasks() {
             sprint: 1
         }));
 
-        filteredTasks = [...tasks];
-        renderTasks();
-        updateAllStats();
+        // Apply filters including board filter
+        applyFilters();
 
     } catch (error) {
         console.error('Error loading tasks:', error);
