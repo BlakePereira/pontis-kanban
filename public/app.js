@@ -1,6 +1,7 @@
 // PONTIS KANBAN - JWT AUTH VERSION
 let tasks = [];
 let filteredTasks = [];
+let boards = [];
 let currentTaskId = null;
 let currentBoard = 'pontis-dev';
 let filters = {
@@ -55,6 +56,7 @@ async function checkAuthAndLoadTasks() {
         });
 
         if (response.ok) {
+            await loadBoards();
             loadTasks();
         } else {
             logout();
@@ -63,6 +65,63 @@ async function checkAuthAndLoadTasks() {
         console.error('Auth check error:', error);
         logout();
     }
+}
+
+async function loadBoards() {
+    try {
+        const response = await fetch('/api/boards', {
+            headers: authHeaders()
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        boards = await response.json();
+        renderBoardTabs();
+        renderBoardSelect();
+        
+    } catch (error) {
+        console.error('Error loading boards:', error);
+        // Fallback to default boards if API fails
+        boards = [
+            { slug: 'pontis-dev', name: 'Pontis Dev', icon: '🐛' },
+            { slug: 'pontis-ops', name: 'Pontis Ops', icon: '🚀' },
+            { slug: 'personal', name: 'Personal', icon: '🏠' }
+        ];
+        renderBoardTabs();
+        renderBoardSelect();
+    }
+}
+
+function renderBoardTabs() {
+    const tabsContainer = document.querySelector('.board-tabs');
+    if (!tabsContainer || boards.length === 0) return;
+    
+    tabsContainer.innerHTML = boards.map(board => `
+        <button class="board-tab ${board.slug === currentBoard ? 'active' : ''}" 
+                data-board="${board.slug}" 
+                onclick="switchBoard('${board.slug}')">
+            ${board.icon} ${board.name}
+        </button>
+    `).join('');
+}
+
+function renderBoardSelect() {
+    const boardSelect = document.getElementById('taskBoard');
+    if (!boardSelect || boards.length === 0) return;
+    
+    boardSelect.innerHTML = boards.map(board => `
+        <option value="${board.slug}">${board.icon} ${board.name}</option>
+    `).join('');
+    
+    // Set to current board
+    boardSelect.value = currentBoard;
 }
 
 // ===== API FUNCTIONS =====
@@ -242,30 +301,26 @@ function clearFilters() {
     showNotification('Filters cleared', 'info');
 }
 
-function switchBoard(board) {
-    currentBoard = board;
-    filters.board = board;
+function switchBoard(boardSlug) {
+    currentBoard = boardSlug;
+    filters.board = boardSlug;
     
     // Update tab UI
     document.querySelectorAll('.board-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.board === board);
+        tab.classList.toggle('active', tab.dataset.board === boardSlug);
     });
     
     // Update board selector in modal if open
     const boardSelect = document.getElementById('taskBoard');
     if (boardSelect) {
-        boardSelect.value = board;
+        boardSelect.value = boardSlug;
     }
     
     applyFilters();
     
-    // Update header subtitle based on board
-    const subtitles = {
-        'pontis-dev': 'Development & Bugs',
-        'pontis-ops': 'Business & Operations', 
-        'personal': 'Personal Tasks'
-    };
-    document.querySelector('.subtitle').textContent = subtitles[board] || 'Project Management';
+    // Update header subtitle based on board (from boards array)
+    const board = boards.find(b => b.slug === boardSlug);
+    document.querySelector('.subtitle').textContent = board ? board.name : 'Project Management';
 }
 
 // ===== RENDERING =====

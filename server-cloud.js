@@ -71,6 +71,28 @@ app.get('/login', (req, res) => {
 
 // ===== Protected API Routes =====
 
+// Get all boards
+app.get('/api/boards', requireAuth, (req, res) => {
+  database.getBoards((err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Create new board
+app.post('/api/boards', requireAuth, (req, res) => {
+  const { slug, name, icon, display_order } = req.body;
+
+  if (!slug || !name) {
+    return res.status(400).json({ error: 'Board slug and name are required' });
+  }
+
+  database.createBoard({ slug, name, icon, display_order }, (err, board) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Board created successfully', board });
+  });
+});
+
 // Get all tasks
 app.get('/api/tasks', requireAuth, (req, res) => {
   database.getAllTasks((err, rows) => {

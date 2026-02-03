@@ -37,6 +37,29 @@ class Database {
     this.checkAndSeed();
   }
 
+  // Get all boards
+  getBoards(callback) {
+    query('GET', 'kanban_boards?select=*&order=display_order.asc')
+      .then(rows => callback(null, rows))
+      .catch(err => callback(err));
+  }
+
+  // Create a new board
+  async createBoard(boardData, callback) {
+    try {
+      const board = {
+        slug: boardData.slug,
+        name: boardData.name,
+        icon: boardData.icon || '📋',
+        display_order: boardData.display_order || 99
+      };
+      const rows = await query('POST', 'kanban_boards', board);
+      callback(null, rows[0]);
+    } catch (err) {
+      callback(err);
+    }
+  }
+
   async checkAndSeed() {
     try {
       const rows = await query('GET', `${TABLE}?select=id&limit=1`);

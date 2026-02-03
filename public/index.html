@@ -27,17 +27,9 @@
             </div>
         </header>
 
-        <!-- BOARD TABS -->
+        <!-- BOARD TABS (loaded dynamically from database) -->
         <nav class="board-tabs">
-            <button class="board-tab active" data-board="pontis-dev" onclick="switchBoard('pontis-dev')">
-                🐛 Pontis Dev
-            </button>
-            <button class="board-tab" data-board="pontis-ops" onclick="switchBoard('pontis-ops')">
-                🚀 Pontis Ops
-            </button>
-            <button class="board-tab" data-board="personal" onclick="switchBoard('personal')">
-                🏠 Personal
-            </button>
+            <div class="loading">Loading boards...</div>
         </nav>
 
         <!-- STATS DASHBOARD -->
@@ -242,9 +234,7 @@
                         <div class="form-group">
                             <label for="taskBoard" class="form-label">Board</label>
                             <select id="taskBoard" class="form-select">
-                                <option value="pontis-dev">🐛 Pontis Dev</option>
-                                <option value="pontis-ops">🚀 Pontis Ops</option>
-                                <option value="personal">🏠 Personal</option>
+                                <!-- Options loaded dynamically from database -->
                             </select>
                         </div>
                     </div>
