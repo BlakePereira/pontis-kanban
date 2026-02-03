@@ -713,10 +713,6 @@ function showCelebration() {
 }
 
 function toggleSprint() { showNotification('Sprint view toggle coming soon!', 'info'); }
-function runAllTests() {
-    showNotification('Running all QA tests...', 'info');
-    setTimeout(() => showNotification('All tests passed! ✅', 'success'), 2000);
-}
 function celebrateCompletion() {
     showCelebration();
     showNotification('Great work team! 🚀', 'success');
