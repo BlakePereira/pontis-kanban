@@ -275,10 +275,17 @@ function createTaskCard(task) {
     const assigneeClass = task.assignee ? task.assignee.toLowerCase() : '';
     const daysUntilDue = task.due_date ? getDaysUntilDue(task.due_date) : null;
     const tags = task.tags ? task.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [];
+    const taskCode = task.task_code || null;
 
     return `
         <div class="card ${task.priority}" data-task-id="${task.id}" draggable="true">
             <div class="card-header">
+                ${taskCode ? `
+                    <div class="task-code" onclick="copyTaskCode('${taskCode}')" title="Click to copy ${taskCode}">
+                        <span class="code-text">${taskCode}</span>
+                        <span class="copy-icon">📋</span>
+                    </div>
+                ` : ''}
                 <h3 class="card-title">${escapeHtml(task.title)}</h3>
                 <div class="card-assignee ${assigneeClass}" title="${task.assignee || 'Unassigned'}">
                     ${assigneeInitials}
@@ -575,6 +582,21 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function copyTaskCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+        showNotification(`Copied: ${code}`, 'success');
+    }).catch(err => {
+        // Fallback for browsers without clipboard API
+        const textarea = document.createElement('textarea');
+        textarea.value = code;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showNotification(`Copied: ${code}`, 'success');
+    });
 }
 
 function showNotification(message, type = 'info') {

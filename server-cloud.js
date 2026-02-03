@@ -87,17 +87,32 @@ app.post('/api/tasks', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Task title is required' });
   }
 
+  if (!priority) {
+    return res.status(400).json({ error: 'Priority is required (critical, high, medium, low)' });
+  }
+
+  // Validate priority values
+  const validPriorities = ['critical', 'high', 'medium', 'low'];
+  if (!validPriorities.includes(priority.toLowerCase())) {
+    return res.status(400).json({ error: 'Priority must be one of: critical, high, medium, low' });
+  }
+
   const taskData = {
     title: title.trim(),
     description: description ? description.trim() : '',
-    priority: priority || 'medium',
+    priority: priority.toLowerCase(),
     assignee: assignee || '',
     status: status || 'backlog'
   };
 
   database.createTask(taskData, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ id: result.lastID, ...taskData, message: 'Task created successfully' });
+    res.json({ 
+      id: result.lastID, 
+      taskCode: result.taskCode,
+      ...taskData, 
+      message: 'Task created successfully' 
+    });
   });
 });
 
@@ -151,6 +166,17 @@ app.get('/api/health', (req, res) => {
     status: 'OK',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Migrate task codes (one-time operation)
+app.post('/api/migrate-task-codes', requireAuth, (req, res) => {
+  database.migrateTaskCodes((err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({
+      message: 'Migration complete',
+      ...result
+    });
   });
 });
 

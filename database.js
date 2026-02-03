@@ -101,21 +101,78 @@ class Database {
       .catch(err => callback(err));
   }
 
-  createTask(taskData, callback) {
-    const task = {
-      title: taskData.title,
-      description: taskData.description || '',
-      priority: taskData.priority || 'medium',
-      assignee: taskData.assignee || '',
-      status: taskData.status || 'backlog'
-    };
+  async createTask(taskData, callback) {
+    // Validate required fields
+    if (!taskData.priority) {
+      return callback(new Error('Priority is required'));
+    }
+    
+    try {
+      // Generate task code
+      const taskCode = await this.generateTaskCode(taskData.priority);
+      console.log('Generated task code:', taskCode);
+      
+      const task = {
+        title: taskData.title,
+        description: taskData.description || '',
+        priority: taskData.priority,
+        assignee: taskData.assignee || '',
+        status: taskData.status || 'backlog',
+        task_code: taskCode
+      };
 
-    query('POST', TABLE, task)
-      .then(rows => {
-        const created = rows[0];
-        callback(null, { lastID: created.id, changes: 1 });
-      })
-      .catch(err => callback(err));
+      const rows = await query('POST', TABLE, task);
+      const created = rows[0];
+      console.log('Created task:', created);
+      console.log('Returning result with taskCode:', taskCode);
+      callback(null, { lastID: created.id, changes: 1, taskCode: taskCode });
+    } catch (err) {
+      console.error('Error in createTask:', err);
+      callback(err);
+    }
+  }
+
+  async generateTaskCode(priority) {
+    // Get priority prefix
+    const prefixes = {
+      'critical': 'C',
+      'high': 'H', 
+      'medium': 'M',
+      'low': 'L'
+    };
+    
+    const prefix = prefixes[priority.toLowerCase()] || 'M';
+    
+    // Get highest existing number for this priority
+    try {
+      // Try to get existing tasks, but handle schema issues gracefully
+      let allTasks = [];
+      try {
+        allTasks = await query('GET', `${TABLE}?select=task_code`);
+      } catch (schemaError) {
+        // task_code field might not exist yet, fallback to getting all tasks
+        console.log('task_code field might not exist, falling back...');
+        allTasks = await query('GET', `${TABLE}?select=*&limit=1000`);
+      }
+      
+      let maxNumber = 0;
+      allTasks.forEach(task => {
+        if (task.task_code && task.task_code.startsWith(`${prefix}-`)) {
+          const match = task.task_code.match(/^[A-Z]-(\d+)$/);
+          if (match) {
+            maxNumber = Math.max(maxNumber, parseInt(match[1]));
+          }
+        }
+      });
+      
+      const nextNumber = maxNumber + 1;
+      return `${prefix}-${nextNumber.toString().padStart(3, '0')}`;
+    } catch (err) {
+      console.error('Error generating task code:', err);
+      // Generate based on timestamp to ensure uniqueness
+      const timestamp = Date.now().toString().slice(-3);
+      return `${prefix}-${timestamp}`;
+    }
   }
 
   updateTask(taskId, taskData, callback) {
@@ -127,10 +184,46 @@ class Database {
       status: taskData.status || 'backlog',
       updated_at: new Date().toISOString()
     };
+    
+    // Include task_code if provided
+    if (taskData.task_code) {
+      updates.task_code = taskData.task_code;
+    }
 
     query('PATCH', `${TABLE}?id=eq.${taskId}`, updates)
       .then(rows => callback(null, { changes: rows.length }))
       .catch(err => callback(err));
+  }
+  
+  // Migrate existing tasks without task_code
+  async migrateTaskCodes(callback) {
+    try {
+      const tasks = await query('GET', `${TABLE}?select=*&order=created_at.asc`);
+      const counters = { C: 0, H: 0, M: 0, L: 0 };
+      let migrated = 0;
+      
+      for (const task of tasks) {
+        if (!task.task_code) {
+          const prefix = { critical: 'C', high: 'H', medium: 'M', low: 'L' }[task.priority] || 'M';
+          counters[prefix]++;
+          const taskCode = `${prefix}-${counters[prefix].toString().padStart(3, '0')}`;
+          
+          await query('PATCH', `${TABLE}?id=eq.${task.id}`, { task_code: taskCode });
+          migrated++;
+        } else {
+          // Count existing codes to maintain sequence
+          const match = task.task_code.match(/^([CHML])-(\d+)$/);
+          if (match) {
+            const [, prefix, num] = match;
+            counters[prefix] = Math.max(counters[prefix], parseInt(num));
+          }
+        }
+      }
+      
+      callback(null, { migrated, total: tasks.length, counters });
+    } catch (err) {
+      callback(err);
+    }
   }
 
   updateTaskStatus(taskId, status, callback) {

@@ -708,6 +708,64 @@ body {
   border: 0;
 }
 
+/* TASK CODE BADGE */
+.task-code {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-300);
+  padding: 2px 8px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: var(--space-2);
+}
+
+.task-code:hover {
+  background: var(--gray-200);
+  border-color: var(--pontis-primary);
+  color: var(--pontis-primary);
+}
+
+.task-code .copy-icon {
+  font-size: 0.65rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.task-code:hover .copy-icon {
+  opacity: 1;
+}
+
+.card.critical .task-code {
+  background: #fef2f2;
+  border-color: var(--priority-critical);
+  color: var(--priority-critical);
+}
+
+.card.high .task-code {
+  background: #fff7ed;
+  border-color: var(--priority-high);
+  color: var(--priority-high);
+}
+
+.card.medium .task-code {
+  background: #eff6ff;
+  border-color: var(--priority-medium);
+  color: var(--priority-medium);
+}
+
+.card.low .task-code {
+  background: #f8fafc;
+  border-color: var(--priority-low);
+  color: var(--priority-low);
+}
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .board {
