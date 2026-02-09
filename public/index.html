@@ -92,6 +92,7 @@
                         <option value="">Current Sprint</option>
                         <option value="1">Sprint 1 (Launch)</option>
                         <option value="backlog">Product Backlog</option>
+                        <option value="needs-fix">Needs Fix</option>
                     </select>
                 </div>
                 
@@ -138,6 +139,19 @@
                         <div style="font-size: 0.75rem; color: var(--gray-500);">WIP Limit: 5</div>
                     </div>
                     <div class="column-content" id="progress-tasks">
+                        <div class="loading">Loading tasks...</div>
+                    </div>
+                </div>
+
+                <!-- NEEDS FIX -->
+                <div class="column" data-status="needs-fix">
+                    <div class="column-header">
+                        <div class="column-title">
+                            🔧 Needs Fix
+                            <span class="column-count" id="needs-fix-count">0</span>
+                        </div>
+                    </div>
+                    <div class="column-content" id="needs-fix-tasks">
                         <div class="loading">Loading tasks...</div>
                     </div>
                 </div>
@@ -223,6 +237,7 @@
                             <select id="taskStatus" class="form-select">
                                 <option value="backlog" selected>📋 Backlog</option>
                                 <option value="progress">🔄 In Progress</option>
+                                <option value="needs-fix">🔧 Needs Fix</option>
                                 <option value="testing">🧪 Testing</option>
                                 <option value="done">✅ Done</option>
                             </select>
