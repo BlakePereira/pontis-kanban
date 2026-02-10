@@ -325,7 +325,7 @@ function switchBoard(boardSlug) {
 
 // ===== RENDERING =====
 function renderTasks() {
-    const statuses = ['backlog', 'progress', 'testing', 'done'];
+    const statuses = ['backlog', 'progress', 'needs-fix', 'testing', 'done'];
 
     statuses.forEach(status => {
         const container = document.getElementById(`${status}-tasks`);
