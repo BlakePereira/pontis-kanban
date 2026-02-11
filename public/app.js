@@ -264,6 +264,160 @@ async function deleteTask(taskId) {
     }
 }
 
+async function archiveTask(taskId) {
+    if (!confirm('Archive this task? It will be moved to the archive.')) return;
+
+    try {
+        const response = await fetch(`/api/tasks/${taskId}/archive`, {
+            method: 'PATCH',
+            headers: authHeaders()
+        });
+
+        if (response.status === 401) { logout(); return false; }
+
+        if (response.ok) {
+            await loadTasks();
+            showNotification('Task archived successfully', 'success');
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error archiving task:', error);
+        showNotification('Failed to archive task', 'error');
+        return false;
+    }
+}
+
+async function unarchiveTask(taskId) {
+    try {
+        const response = await fetch(`/api/tasks/${taskId}/unarchive`, {
+            method: 'PATCH',
+            headers: authHeaders()
+        });
+
+        if (response.status === 401) { logout(); return false; }
+
+        if (response.ok) {
+            await loadArchivedTasks();
+            showNotification('Task unarchived successfully', 'success');
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error unarchiving task:', error);
+        showNotification('Failed to unarchive task', 'error');
+        return false;
+    }
+}
+
+async function openArchiveModal() {
+    document.getElementById('archiveModal').style.display = 'block';
+    await loadArchivedTasks();
+}
+
+function closeArchiveModal() {
+    document.getElementById('archiveModal').style.display = 'none';
+}
+
+async function loadArchivedTasks() {
+    try {
+        const response = await fetch('/api/tasks/archived', {
+            headers: authHeaders()
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const archivedTasks = await response.json();
+        renderArchivedTasks(archivedTasks);
+    } catch (error) {
+        console.error('Error loading archived tasks:', error);
+        showNotification('Failed to load archived tasks', 'error');
+    }
+}
+
+function renderArchivedTasks(archivedTasks) {
+    const container = document.getElementById('archived-tasks-list');
+    
+    if (archivedTasks.length === 0) {
+        container.innerHTML = '<div class="empty-state">No archived tasks</div>';
+        return;
+    }
+
+    container.innerHTML = archivedTasks.map(task => {
+        const assigneeInitials = getAssigneeInitials(task.assignee);
+        const assigneeClass = task.assignee ? task.assignee.toLowerCase() : '';
+        const taskCode = task.task_code || null;
+
+        return `
+            <div class="archived-task-card ${task.priority}">
+                <div class="card-header">
+                    ${taskCode ? `
+                        <div class="task-code" onclick="copyTaskCode('${taskCode}')" title="Click to copy ${taskCode}">
+                            <span class="code-text">${taskCode}</span>
+                            <span class="copy-icon">📋</span>
+                        </div>
+                    ` : ''}
+                    <h3 class="card-title">${escapeHtml(task.title)}</h3>
+                    <div class="card-assignee ${assigneeClass}" title="${task.assignee || 'Unassigned'}">
+                        ${assigneeInitials}
+                    </div>
+                </div>
+
+                ${task.description ? `<div class="card-description">${escapeHtml(task.description)}</div>` : ''}
+
+                <div class="card-meta">
+                    <div class="priority-badge ${task.priority}">
+                        ${getPriorityIcon(task.priority)} ${task.priority.toUpperCase()}
+                    </div>
+                    <div class="archived-date">
+                        Archived: ${new Date(task.updated_at).toLocaleDateString()}
+                    </div>
+                </div>
+
+                <div class="card-actions">
+                    <button class="card-action-btn" onclick="unarchiveTask(${task.id})" title="Restore task">
+                        📤 Unarchive
+                    </button>
+                    <button class="card-action-btn delete-btn" onclick="deleteArchivedTask(${task.id})" title="Delete permanently">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function deleteArchivedTask(taskId) {
+    if (!confirm('Permanently delete this task? This cannot be undone.')) return;
+
+    try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+
+        if (response.status === 401) { logout(); return false; }
+
+        if (response.ok) {
+            await loadArchivedTasks();
+            showNotification('Task deleted permanently', 'success');
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        showNotification('Failed to delete task', 'error');
+        return false;
+    }
+}
+
 // ===== FILTERING & SEARCH =====
 function applyFilters() {
     filters.assignee = document.getElementById('assigneeFilter').value;
@@ -408,6 +562,11 @@ function createTaskCard(task) {
                 <button class="card-action-btn edit-btn" onclick="editTask(${task.id})" title="Edit task">
                     ✏️ Edit
                 </button>
+                ${task.status === 'done' ? `
+                    <button class="card-action-btn archive-btn" onclick="archiveTask(${task.id})" title="Archive task">
+                        📦 Archive
+                    </button>
+                ` : ''}
                 <button class="card-action-btn delete-btn" onclick="deleteTask(${task.id})" title="Delete task">
                     🗑️ Delete
                 </button>

@@ -20,6 +20,9 @@
                     <button class="btn btn-secondary btn-sm" onclick="openReportsModal()">
                         📈 Reports
                     </button>
+                    <button class="btn btn-secondary btn-sm" onclick="openArchiveModal()">
+                        📦 Archive
+                    </button>
                     <button class="btn btn-primary" onclick="openAddTaskModal()">
                         ➕ Add Task
                     </button>
@@ -322,6 +325,21 @@
                             <strong>Clara:</strong> 5 specs delivered, project management systems
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ARCHIVE MODAL -->
+    <div id="archiveModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 class="modal-title">📦 Archived Tasks</h2>
+                <span class="close" onclick="closeArchiveModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="archived-tasks-list" class="archived-tasks-container">
+                    <div class="empty-state">Loading archived tasks...</div>
                 </div>
             </div>
         </div>

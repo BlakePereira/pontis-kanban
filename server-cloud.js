@@ -191,6 +191,30 @@ app.delete('/api/tasks/:id', requireAuth, (req, res) => {
   });
 });
 
+// Archive task
+app.patch('/api/tasks/:id/archive', requireAuth, (req, res) => {
+  database.archiveTask(req.params.id, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Task archived successfully', changes: result.changes });
+  });
+});
+
+// Unarchive task
+app.patch('/api/tasks/:id/unarchive', requireAuth, (req, res) => {
+  database.unarchiveTask(req.params.id, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Task unarchived successfully', changes: result.changes });
+  });
+});
+
+// Get archived tasks
+app.get('/api/tasks/archived', requireAuth, (req, res) => {
+  database.getArchivedTasks((err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
