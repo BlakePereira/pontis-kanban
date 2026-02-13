@@ -119,7 +119,15 @@ class Database {
   // ===== CRUD Methods (callback-style for compatibility with server-cloud.js) =====
 
   getAllTasks(callback) {
-    query('GET', `${TABLE}?select=*&order=created_at.desc`)
+    // Filter out archived tasks by default
+    query('GET', `${TABLE}?select=*&archived=eq.false&order=created_at.desc`)
+      .then(rows => callback(null, rows))
+      .catch(err => callback(err));
+  }
+
+  // Get archived tasks
+  getArchivedTasks(callback) {
+    query('GET', `${TABLE}?select=*&archived=eq.true&order=updated_at.desc`)
       .then(rows => callback(null, rows))
       .catch(err => callback(err));
   }
@@ -265,6 +273,30 @@ class Database {
   deleteTask(taskId, callback) {
     query('DELETE', `${TABLE}?id=eq.${taskId}`)
       .then(rows => callback(null, { changes: rows ? rows.length : 1 }))
+      .catch(err => callback(err));
+  }
+
+  // Archive a task
+  archiveTask(taskId, callback) {
+    const updates = {
+      archived: true,
+      updated_at: new Date().toISOString()
+    };
+
+    query('PATCH', `${TABLE}?id=eq.${taskId}`, updates)
+      .then(rows => callback(null, { changes: rows.length }))
+      .catch(err => callback(err));
+  }
+
+  // Unarchive a task
+  unarchiveTask(taskId, callback) {
+    const updates = {
+      archived: false,
+      updated_at: new Date().toISOString()
+    };
+
+    query('PATCH', `${TABLE}?id=eq.${taskId}`, updates)
+      .then(rows => callback(null, { changes: rows.length }))
       .catch(err => callback(err));
   }
 
